@@ -9,17 +9,17 @@
 #define LED_PIN    2
 
 // How many NeoPixels are attached to the Arduino?
-#define LED_COUNT 105
-#define COLUMNS 15
-#define ROWS 7
+#define LED_COUNT 200
+#define COLUMNS 10
+#define ROWS 20
 
 // Brians brain cells have three states, 0=dead,1<alive,-1=resting
 // The age is a positive integer
-int cell[COLUMNS][ROWS];
-int livingneighbours[COLUMNS][ROWS];
+int cell[ROWS][COLUMNS];
+int livingneighbours[ROWS][COLUMNS];
 int rows = ROWS;
 int columns = COLUMNS;
-int wait = 100;
+int wait = 10;
 int brainage = 0;
 
 // Declare our NeoPixel strip object:
@@ -57,56 +57,79 @@ void loop() {
  */
 int briansBrain(int wait) {
   int living=0;
-  for (int ix=0;ix<COLUMNS;ix++) {
-    for (int iy=0;iy<ROWS;iy++) {
-      livingneighbours[ix][iy] = livingNeighbours(ix,iy);  
+
+//  for (int i=0;i<rows*columns;i++) {
+//    long icol = random(-1,columns);
+//    long irow = random(-1,rows);
+  for (int icol=0;icol<columns;icol++) {
+    for (int irow=0;irow<rows;irow++) {
+      livingneighbours[irow][icol] = livingNeighbours(irow,icol);  
     }
   }
-  for (int ix=0;ix<COLUMNS;ix++) {
-    for (int iy=0;iy<ROWS;iy++) {
+  for (int icol=0;icol<columns;icol++) {
+    for (int irow=0;irow<rows;irow++) {
       int ir=50, ig=50, ib=50;
-      // Off cells start firing if they have two living neighbours
-      if (cell[ix][iy] == 0 && livingneighbours[ix][iy] == 2) {
-        cell[ix][iy]=1;
-        ir=250; ig=0; ib=0;
-        living = living +1;
-      } else
-      // Firing cells start resting
-      if (cell[ix][iy] == 1) {
-        cell[ix][iy]=-1;
-        ir=0; ig=250; ib=0;
-      } else 
       // Resting cells go off
-      if (cell[ix][iy] == -1) {
-        cell[ix][iy]=0;
+      if (cell[irow][icol] == -1) {
+        cell[irow][icol]=0;
         ir=50; ig=50; ib=50;
+      } 
+      // Firing cells start resting
+      if (cell[irow][icol] == 1) {
+        cell[irow][icol]=-1;
+        ir=0; ig=250; ib=0;
+      } 
+      // Off cells start firing if they have two living neighbours
+      if (cell[irow][icol] == 0 && livingneighbours[irow][icol] == 2) {
+        cell[irow][icol]=1;
+        ir=250; ig=0; ib=0;
+        living += 1;
       }
-
-      int iled = ix + (iy*columns);
-      strip.setPixelColor(iled, strip.Color(ig,ir,ib)); //  Set pixel's color (in RAM)
-      strip.show();                  //  Update strip to match
-      delay(wait);            
+      strip.setPixelColor(rowcolumn(irow,icol), strip.Color(ig,ir,ib)); //  Set pixel's color (in RAM)
+      delay(wait);
     }
   }
+  strip.show();                  //  Update strip to match
+
   return living;
 }
 
-/********************
- * Conways life rules
+/**
+ * Returns the index of a row and column
+ * 0 9 10
+ * 1 8 11
+ * 2 7 12
+ * 3 6 etc
+ * 4 5
+ * 
  */
-int conwaysLife(int wait) {
-  int living=0;
-  return living;
+int rowcolumn(int irow, int icol) {
+  int i;
+  irow = irow % rows;
+  icol = icol % columns;
+  if (icol%2==0) {
+    i = (irow + icol*rows);
+  } else {
+    i = (rows - irow + icol*rows);
+  }
+  // Serial.print("row ");
+  // Serial.print(irow);
+  // Serial.print(" col ");
+  // Serial.print(icol);
+  // Serial.print(" index ");
+  // Serial.println(i);
+  return i;
 }
+
 /***************************************
  * Count the number of living neighbours
  */
-int livingNeighbours(int ix,int iy) {
+int livingNeighbours(int irow,int icol) {
   int alive = 0;
   for (int ixc=-1;ixc<2;ixc++) {
     for (int iyc=-1;iyc<2;iyc++) {
       if (!(ixc==0 && iyc==0)) {
-        if (cell[(ix+ixc+columns)%columns][(iy+iyc+rows)%rows]>0) {alive=alive+1;}
+        if (cell[irow+iyc][icol+ixc]>0) {alive=alive+1;}
       }
     }
   }
@@ -122,24 +145,22 @@ void randomStart(int wait) {
   //   allLights(iw,iw,iw);
   // }
   int ir, ig, ib;
-  for (int ix=0;ix<COLUMNS;ix++) {
-    for (int iy=0;iy<ROWS;iy++) {
+  for (int icol=0;icol<columns;icol++) {
+    for (int irow=0;irow<rows;irow++) {
       long r = random(-1,2);
       if (r == 1) {
-        cell[ix][iy] = 1;
+        cell[icol][irow] = 1;
         ir=250, ig=0; ib=0;  
       } else if (r == -1) {
-        cell[ix][iy]=-1;
+        cell[icol][irow]=-1;
         ir=0, ig=250; ib=0;
       } else {
         ir=50, ig=50; ib=50;
       }
-  
-      int iled = ix + iy * columns;
-      strip.setPixelColor(iled, strip.Color(ig,ir,ib)); //  Set pixel's color (in RAM)
+      strip.setPixelColor(rowcolumn(irow,icol), strip.Color(ig,ir,ib)); //  Set pixel's color (in RAM)
       strip.show();                  //  Update strip to match
-      delay(wait);
     }
+    delay(wait);
   }
   Serial.println("Random start done");
 }
@@ -148,10 +169,9 @@ void randomStart(int wait) {
  * Set all lights to the same colour
  */
 void allLights(int ir, int ig, int ib) { 
-  for (int ix=0;ix<COLUMNS;ix++) {
-    for (int iy=0;iy<ROWS;iy++) {
-      int iled = ix + iy * columns;
-      strip.setPixelColor(iled, strip.Color(ig,ir,ib)); //  Set pixel's color (in RAM)
+  for (int icol=0;icol<columns;icol++) {
+    for (int irow=0;irow<rows;irow++) {
+      strip.setPixelColor(rowcolumn(irow,icol), strip.Color(ig,ir,ib)); //  Set pixel's color (in RAM)
       strip.show();                  //  Update strip to match
     }
   }
