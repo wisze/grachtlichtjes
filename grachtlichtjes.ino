@@ -19,7 +19,7 @@ int cell[ROWS][COLUMNS];
 int livingneighbours[ROWS][COLUMNS];
 int rows = ROWS;
 int columns = COLUMNS;
-int wait = 10;
+int wait = 0;
 int brainage = 0;
 
 // Declare our NeoPixel strip object:
@@ -58,39 +58,31 @@ void loop() {
 int briansBrain(int wait) {
   int living=0;
 
-//  for (int i=0;i<rows*columns;i++) {
-//    long icol = random(-1,columns);
-//    long irow = random(-1,rows);
-  for (int icol=0;icol<columns;icol++) {
-    for (int irow=0;irow<rows;irow++) {
-      livingneighbours[irow][icol] = livingNeighbours(irow,icol);  
+  for (int i=0;i<rows*columns;i++) {
+    long icol = random(0,columns);
+    long irow = random(0,rows);
+    livingneighbours[irow][icol] = livingNeighbours(irow,icol);  
+    int ir=50, ig=50, ib=50;
+    // Resting cells go off
+    if (cell[irow][icol] == -1) {
+      cell[irow][icol]=0;
+      ir=50; ig=50; ib=50;
+    } 
+    // Firing cells start resting
+    if (cell[irow][icol] == 1) {
+      cell[irow][icol]=-1;
+      ir=0; ig=250; ib=0;
+    } 
+    // Off cells start firing if they have two living neighbours
+    if (cell[irow][icol] == 0 && livingneighbours[irow][icol] == 2) {
+      cell[irow][icol]=1;
+      ir=250; ig=0; ib=0;
+      living += 1;
     }
+    strip.setPixelColor(rowcolumn(irow,icol), strip.Color(ig,ir,ib)); //  Set pixel's color (in RAM)
+    strip.show();                  //  Update strip to match
+    delay(wait);
   }
-  for (int icol=0;icol<columns;icol++) {
-    for (int irow=0;irow<rows;irow++) {
-      int ir=50, ig=50, ib=50;
-      // Resting cells go off
-      if (cell[irow][icol] == -1) {
-        cell[irow][icol]=0;
-        ir=50; ig=50; ib=50;
-      } 
-      // Firing cells start resting
-      if (cell[irow][icol] == 1) {
-        cell[irow][icol]=-1;
-        ir=0; ig=250; ib=0;
-      } 
-      // Off cells start firing if they have two living neighbours
-      if (cell[irow][icol] == 0 && livingneighbours[irow][icol] == 2) {
-        cell[irow][icol]=1;
-        ir=250; ig=0; ib=0;
-        living += 1;
-      }
-      strip.setPixelColor(rowcolumn(irow,icol), strip.Color(ig,ir,ib)); //  Set pixel's color (in RAM)
-      delay(wait);
-    }
-  }
-  strip.show();                  //  Update strip to match
-
   return living;
 }
 
