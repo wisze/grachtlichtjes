@@ -16,11 +16,15 @@
 // Brians brain cells have three states, 0=dead,1<alive,-1=resting
 // The age is a positive integer
 int cell[ROWS][COLUMNS];
-int livingneighbours[ROWS][COLUMNS];
+long age[ROWS][COLUMNS];
+// int livingneighbours[ROWS][COLUMNS];
 int rows = ROWS;
 int columns = COLUMNS;
-int wait = 0;
+int wait = 10;
 int brainage = 0;
+int fireTime = 1000;
+int restTime = 1000;
+int inactive = 10000;
 
 // Declare our NeoPixel strip object:
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -31,20 +35,19 @@ void setup() {
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.show();            // Turn OFF all pixels ASAP
   strip.setBrightness(50); // Set BRIGHTNESS to about 1/5 (max = 255)
-  randomStart(10);
+  randomStart(wait);
   brainage=0;
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  int l = briansBrain(5);
-  brainage += 1;
-  Serial.print("Age ");
-  Serial.print(brainage);
-  Serial.print(", ");
-  Serial.print(l);
-  Serial.println(" cells alive.");
-  if (l==0 || brainage>100) {randomStart(10); brainage=0;}
+  long latest;
+  long t = millis();
+  if (briansBrain(t,wait)) {latest = t;}
+  if ((t-latest) > inactive) {
+    randomStart(10);
+    Serial.print(t);
+    Serial.println(" restart");
+  }
 }
 
 /********************************************************************
@@ -55,35 +58,48 @@ void loop() {
  * cell from being born there. Cells that were in the resting state 
  * go into the off state. 
  */
-int briansBrain(int wait) {
-  int living=0;
+boolean briansBrain(long t, int wait) {
+  int ir, ig, ib;
+  long icol = random(0,columns);
+  long irow = random(0,rows);
 
-  for (int i=0;i<rows*columns;i++) {
-    long icol = random(0,columns);
-    long irow = random(0,rows);
-    livingneighbours[irow][icol] = livingNeighbours(irow,icol);  
-    int ir=50, ig=50, ib=50;
-    // Resting cells go off
-    if (cell[irow][icol] == -1) {
+  if (cell[irow][icol] ==  1) { // Firing cell goes to rest after firing period
+    if ((t-age[irow][icol]) < fireTime) {
+      return false;
+    } else {
+      cell[irow][icol]=-1;
+      Serial.print(t);
+      Serial.println(" rest");
+      age[irow][icol] = t;
+      ir=0; ig=250; ib=0;
+    }
+  } else if (cell[irow][icol] == -1) { // Resting cell goes off after rest period
+    if ((t-age[irow][icol]) < restTime) {
+      return false;
+    } else {
       cell[irow][icol]=0;
+      Serial.print(t);
+      Serial.println(" off");
+      age[irow][icol] = t;
       ir=50; ig=50; ib=50;
     } 
-    // Firing cells start resting
-    if (cell[irow][icol] == 1) {
-      cell[irow][icol]=-1;
-      ir=0; ig=250; ib=0;
-    } 
-    // Off cells start firing if they have two living neighbours
-    if (cell[irow][icol] == 0 && livingneighbours[irow][icol] == 2) {
+  } else if (cell[irow][icol] == 0) { // Ready cell fires if it has two firing neighbours
+    int living = livingNeighbours(irow,icol);
+    if (living!= 2) {
+      return false;
+    } else {
       cell[irow][icol]=1;
+      Serial.print(t);
+      Serial.println(" fire");
+      age[irow][icol] = t;
       ir=250; ig=0; ib=0;
-      living += 1;
     }
-    strip.setPixelColor(rowcolumn(irow,icol), strip.Color(ig,ir,ib)); //  Set pixel's color (in RAM)
-    strip.show();                  //  Update strip to match
-    delay(wait);
   }
-  return living;
+  strip.setPixelColor(rowcolumn(irow,icol), strip.Color(ig,ir,ib)); //  Set pixel's color (in RAM)
+  strip.show();                  //  Update strip to match
+  delay(wait);
+ 
+  return true;
 }
 
 /**
@@ -102,7 +118,7 @@ int rowcolumn(int irow, int icol) {
   if (icol%2==0) {
     i = (irow + icol*rows);
   } else {
-    i = (rows - irow + icol*rows);
+    i = (rows-1 - irow + icol*rows);
   }
   // Serial.print("row ");
   // Serial.print(irow);
