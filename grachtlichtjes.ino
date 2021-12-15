@@ -17,12 +17,11 @@
 // The age is a positive integer
 int cell[ROWS][COLUMNS];
 long age[ROWS][COLUMNS];
-// int livingneighbours[ROWS][COLUMNS];
 int rows = ROWS;
 int columns = COLUMNS;
-int wait = 10;
+int wait = 0;
 int brainage = 0;
-int fireTime = 1000;
+int fireTime = 750;
 int restTime = 1000;
 int inactive = 10000;
 
@@ -45,6 +44,7 @@ void loop() {
   if (briansBrain(t,wait)) {latest = t;}
   if ((t-latest) > inactive) {
     randomStart(10);
+    latest = t;
     Serial.print(t);
     Serial.println(" restart");
   }
